@@ -474,6 +474,7 @@ body{
 .trayTitle.red{color:var(--red)}
 .trayTitle.yellow{color:var(--yellow)}
 .trayTitle.blue{color:var(--blue)}
+.trayTitle.purple{color:var(--purple)}
 
 .guardPhonePanel{
   margin-top:10px;padding:10px;border:1px dashed rgba(58,159,255,.35);border-radius:12px;
@@ -855,7 +856,7 @@ body{
 }
 .section::after{
   content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(120deg,transparent 35%,rgba(58,159,255,.11) 50%,transparent 65%);
+  background:linear-gradient(120deg,transparent 35%,rgba(58,159,255,.06) 50%,transparent 65%);
   transform:translateX(-120%);animation:shineSweep 9s ease-in-out infinite;
 }
 .muted{color:var(--muted);font-size:12px}
@@ -1013,6 +1014,19 @@ body{
 }
 .monthDay .dayNum{font-size:18px;font-weight:900;opacity:.95;letter-spacing:.3px}
 .monthDay small{margin-top:6px;font-size:11px;font-weight:800;letter-spacing:.3px;opacity:.95}
+.monthDay .dayNote{
+  margin-top:6px;
+  font-size:10px;
+  font-weight:600;
+  color:#d8ebff;
+  opacity:.9;
+  line-height:1.25;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  word-break:break-word;
+}
 .monthDay.today{
   outline:2px solid rgba(58,159,255,.75);
   box-shadow:0 0 0 1px rgba(58,159,255,.45) inset,0 0 16px rgba(58,159,255,.25);
@@ -1325,11 +1339,17 @@ body{
               <div class="empty" style="padding:16px">Sin OTs</div>
             </div>
           </div>
+          <div class="trayGroup">
+            <div class="trayTitle purple">🟣 Teléfono de guardia</div>
+            <div id="trayGuard" class="trayList">
+              <div class="empty" style="padding:16px">Sin tareas de guardia</div>
+            </div>
+          </div>
 
           <div class="guardPhonePanel">
-            <div class="guardPhoneTitle">📞 Teléfono de guardia por turno (M/T/N por sector)</div>
+            <div class="guardPhoneTitle">📞 Guardia por turno (M/T/N por sector)</div>
             <div class="guardPhoneGrid" id="centralGuardPhones">
-              <div class="empty" style="padding:10px">Sin teléfonos de guardia asignados</div>
+              <div class="empty" style="padding:10px">Sin guardias de turno asignadas</div>
             </div>
           </div>
         </div>
@@ -1661,6 +1681,7 @@ body{
             <option value="Correctivo">🔴 Correctivo</option>
             <option value="Preventivo">🟡 Preventivo</option>
             <option value="OT">🔵 OT</option>
+            <option value="Guardia">🟣 Teléfono de guardia</option>
           </select>
         </div>
         <div class="formGroup">
@@ -2394,7 +2415,7 @@ function renderTechGrid(){
 
       const tasksHtml=tasks.slice(0,2).map(t=>
         `<div style="font-size:11px;color:var(--muted);padding:3px 0;border-top:1px solid var(--line)">
-          ${t.type==='Correctivo'?'🔴':t.type==='Preventivo'?'🟡':'🔵'} ${t.title}
+          ${t.type==='Correctivo'?'🔴':t.type==='Preventivo'?'🟡':t.type==='Guardia'?'🟣':'🔵'} ${t.title}
         </div>`).join('');
 
       return `<div class="techCard shift-${shift} ${guard?'guard':''}" data-tech="${name}" data-sec="${sec}" onclick="showTechDetail('${name}','${sec}')">
@@ -2466,7 +2487,7 @@ function showTechDetail(name, sec){
     </div>
     <div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--muted)">TAREAS ASIGNADAS (${tasks.length})</div>
     ${tasks.length?tasks.map(t=>`<div class="kanCard" style="margin-top:6px">
-      <div class="kct">${t.type==='Correctivo'?'🔴':t.type==='Preventivo'?'🟡':'🔵'} ${t.title}</div>
+      <div class="kct">${t.type==='Correctivo'?'🔴':t.type==='Preventivo'?'🟡':t.type==='Guardia'?'🟣':'🔵'} ${t.title}</div>
       <div class="kcd">${t.status} · ${t.note||'Sin nota'}</div>
     </div>`).join(''):'<div class="muted" style="margin-top:8px">Sin tareas asignadas</div>'}
     <div class="btnRow" style="margin-top:14px">
@@ -2481,7 +2502,7 @@ function showTechDetail(name, sec){
 // RENDER: TASK TRAY
 // ============================================================
 function renderTray(){
-  const corrEl=$('trayCorr'),prevEl=$('trayPrev'),otEl=$('trayOT');
+  const corrEl=$('trayCorr'),prevEl=$('trayPrev'),otEl=$('trayOT'),guardEl=$('trayGuard');
   const plannerSector=document.querySelector('#sectorFilter .filterChip.active')?.dataset.sector||'all';
   if(!corrEl) return;
 
@@ -2489,10 +2510,12 @@ function renderTray(){
   const corr=ST.tasks.filter(t=>t.type==='Correctivo'&&t.status!=='Cerrado'&&inScope(t));
   const prev=ST.tasks.filter(t=>t.type==='Preventivo'&&t.status!=='Cerrado'&&inScope(t));
   const ot=ST.tasks.filter(t=>t.type==='OT'&&t.status!=='Cerrado'&&inScope(t));
+  const guard=ST.tasks.filter(t=>t.type==='Guardia'&&t.status!=='Cerrado'&&inScope(t));
 
   corrEl.innerHTML=corr.length?corr.map(t=>taskCard(t,'corr')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin correctivos</div>';
   prevEl.innerHTML=prev.length?prev.map(t=>taskCard(t,'prev')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin preventivos</div>';
   otEl.innerHTML=ot.length?ot.map(t=>taskCard(t,'ot')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin OTs en bandeja</div>';
+  if(guardEl) guardEl.innerHTML=guard.length?guard.map(t=>taskCard(t,'ot')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin tareas de guardia</div>';
 }
 
 function taskCard(t,cls){
@@ -2797,16 +2820,20 @@ function renderMonthGrid(sector){
         });
       });
       const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+      const dayNote=ST.dayNotes[iso]?`<div class="dayNote">📝 ${ST.dayNotes[iso]}</div>`:'';
       html+=`<div class="monthDay ${dominant} ${iso===today?'today':''}" data-day="${iso}" title="${iso}">
         <div class="dayNum">${d}</div>
         <small>${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
+        ${dayNote}
       </div>`;
     } else {
       const r=ST.rosters[sector];
       const shift=(techName&&r?.names?.includes(techName)?(getTechShift(sector,techName,iso)||'D'):'D').split('/')[0];
+      const dayNote=ST.dayNotes[iso]?`<div class="dayNote">📝 ${ST.dayNotes[iso]}</div>`:'';
       html+=`<div class="monthDay ${shift} ${iso===today?'today':''}" data-day="${iso}" title="${iso}">
         <div class="dayNum">${d}</div>
         <small>${SHIFT_LABELS[shift]||'—'}</small>
+        ${dayNote}
       </div>`;
     }
   }
@@ -2897,12 +2924,11 @@ function renderCentralGuardPhones(){
     const shifts=ST.guardPhonesByShift[sec]||{};
     const parts=['M','T','N'].map(sh=>{
       const name=shifts[sh]||'—';
-      const phone=(name!=='—'&&ST.phones[sec]?.[name])?ST.phones[sec][name]:'Sin teléfono';
-      return `<div class="guardPhoneItem"><b>${sec} · ${SHIFT_LABELS[sh]}</b><span>${name} · ${phone}</span></div>`;
+      return `<div class="guardPhoneItem"><b>${sec} · ${SHIFT_LABELS[sh]}</b><span>${name}</span></div>`;
     }).join('');
     html+=parts;
   });
-  wrap.innerHTML=html||'<div class="empty" style="padding:10px">Sin teléfonos de guardia asignados</div>';
+  wrap.innerHTML=html||'<div class="empty" style="padding:10px">Sin guardias de turno asignadas</div>';
 }
 
 // ============================================================
@@ -3053,7 +3079,7 @@ function renderGuardPhoneShiftForm(){
 }
 
 function bindPlannerDragAndDrop(){
-  const cards=document.querySelectorAll('#trayCorr .taskCard, #trayPrev .taskCard, #trayOT .taskCard');
+  const cards=document.querySelectorAll('#trayCorr .taskCard, #trayPrev .taskCard, #trayOT .taskCard, #trayGuard .taskCard');
   cards.forEach(card=>{
     card.addEventListener('dragstart',()=>card.classList.add('dragging'));
     card.addEventListener('dragend',()=>card.classList.remove('dragging'));
