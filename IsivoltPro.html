@@ -52,6 +52,8 @@
 html{scroll-behavior:smooth}
 body{
   font-family:'Syne',system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.45;
   background:var(--bg);
   color:var(--text);
   min-height:100dvh;
@@ -600,7 +602,8 @@ body{
 .calCell{
   padding:8px 6px;border-radius:var(--r-sm);
   border:1px solid var(--line);
-  text-align:center;font-size:11px;font-weight:800;
+  text-align:center;font-size:12px;font-weight:900;
+  letter-spacing:.2px;
   cursor:pointer;
   transition:all var(--dur1) var(--ease);
 }
@@ -922,6 +925,12 @@ body{
 .filterChip.font.active{
   background:rgba(58,159,255,.15);border-color:rgba(58,159,255,.4);color:#a8d4ff;
 }
+.filterChip.mec.active{
+  background:rgba(255,140,66,.16);border-color:rgba(255,140,66,.45);color:#ffd5b8;
+}
+.filterChip.cli.active{
+  background:rgba(185,79,255,.16);border-color:rgba(185,79,255,.45);color:#e2b8ff;
+}
 
 /* ============================================================
    MONTH CALENDAR
@@ -1138,6 +1147,8 @@ body{
           <button class="filterChip active" data-sector="all">Todos</button>
           <button class="filterChip elec" data-sector="Electricidad">⚡ Electricidad</button>
           <button class="filterChip font" data-sector="Fontanería">💧 Fontanería</button>
+          <button class="filterChip mec" data-sector="Mecánicos">🔧 Mecánicos</button>
+          <button class="filterChip cli" data-sector="Climatización">❄️ Climatización</button>
         </div>
       </div>
 
@@ -1190,6 +1201,24 @@ body{
             <div class="sectorStat"><div class="sstatLabel">Carga</div><div class="sstatVal" id="fontLoad" style="color:var(--blue)">0%</div></div>
           </div>
         </div>
+        <div class="sectorCard" id="cardMec" data-sector="Mecánicos">
+          <div class="sectorName"><span class="sectorDot" style="background:var(--orange);box-shadow:0 0 8px rgba(255,140,66,.5)"></span>Mecánicos</div>
+          <div class="sectorGrid">
+            <div class="sectorStat"><div class="sstatLabel">Guardia</div><div class="sstatVal" id="mecGuard" style="color:var(--orange)">—</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Disponibles</div><div class="sstatVal" id="mecFree" style="color:var(--green)">0</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Correctivos</div><div class="sstatVal" id="mecCorr" style="color:var(--red)">0</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Carga</div><div class="sstatVal" id="mecLoad" style="color:var(--blue)">0%</div></div>
+          </div>
+        </div>
+        <div class="sectorCard" id="cardCli" data-sector="Climatización">
+          <div class="sectorName"><span class="sectorDot" style="background:var(--purple);box-shadow:0 0 8px rgba(185,79,255,.5)"></span>Climatización</div>
+          <div class="sectorGrid">
+            <div class="sectorStat"><div class="sstatLabel">Guardia</div><div class="sstatVal" id="cliGuard" style="color:var(--orange)">—</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Disponibles</div><div class="sstatVal" id="cliFree" style="color:var(--green)">0</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Correctivos</div><div class="sstatVal" id="cliCorr" style="color:var(--red)">0</div></div>
+            <div class="sectorStat"><div class="sstatLabel">Carga</div><div class="sstatVal" id="cliLoad" style="color:var(--blue)">0%</div></div>
+          </div>
+        </div>
       </div>
 
       <!-- Board: Tray + Tech Area -->
@@ -1229,6 +1258,8 @@ body{
               <option value="all">Todos</option>
               <option value="Electricidad">Electricidad</option>
               <option value="Fontanería">Fontanería</option>
+              <option value="Mecánicos">Mecánicos</option>
+              <option value="Climatización">Climatización</option>
             </select>
           </div>
           <div class="techGrid" id="techGrid">
@@ -1249,6 +1280,8 @@ body{
           <button class="filterChip active" data-sector="all">Todos</button>
           <button class="filterChip elec" data-sector="Electricidad">⚡ Electricidad</button>
           <button class="filterChip font" data-sector="Fontanería">💧 Fontanería</button>
+          <button class="filterChip mec" data-sector="Mecánicos">🔧 Mecánicos</button>
+          <button class="filterChip cli" data-sector="Climatización">❄️ Climatización</button>
         </div>
       </div>
       <div class="techGrid enter" id="techGridFull" style="margin-top:4px">
@@ -1266,6 +1299,8 @@ body{
           <select class="select" id="calSector" style="width:auto;padding:6px 10px;font-size:12px">
             <option value="Electricidad">Electricidad</option>
             <option value="Fontanería">Fontanería</option>
+            <option value="Mecánicos">Mecánicos</option>
+            <option value="Climatización">Climatización</option>
           </select>
           <button class="btn sm" id="btnWeekPrev">◀</button>
           <span id="weekLabel" style="font-size:13px;font-weight:700">Semana</span>
@@ -1528,6 +1563,8 @@ body{
           <select class="select" id="taskSector">
             <option value="Electricidad">Electricidad</option>
             <option value="Fontanería">Fontanería</option>
+            <option value="Mecánicos">Mecánicos</option>
+            <option value="Climatización">Climatización</option>
           </select>
         </div>
       </div>
@@ -1577,6 +1614,8 @@ body{
           <select class="select" id="incSector">
             <option value="Electricidad">Electricidad</option>
             <option value="Fontanería">Fontanería</option>
+            <option value="Mecánicos">Mecánicos</option>
+            <option value="Climatización">Climatización</option>
           </select>
         </div>
         <div class="formGroup">
@@ -1632,6 +1671,8 @@ body{
           <select class="select" id="otSector">
             <option value="Electricidad">Electricidad</option>
             <option value="Fontanería">Fontanería</option>
+            <option value="Mecánicos">Mecánicos</option>
+            <option value="Climatización">Climatización</option>
           </select>
         </div>
       </div>
@@ -1699,6 +1740,18 @@ body{
           <option value="">— Sin guardia —</option>
         </select>
       </div>
+      <div class="formGroup">
+        <label class="label">Guardia Mecánicos</label>
+        <select class="select" id="guardMec">
+          <option value="">— Sin guardia —</option>
+        </select>
+      </div>
+      <div class="formGroup">
+        <label class="label">Guardia Climatización</label>
+        <select class="select" id="guardCli">
+          <option value="">— Sin guardia —</option>
+        </select>
+      </div>
       <div class="btnRow">
         <button class="btn primary" id="btnSaveGuard">Guardar guardias</button>
         <button class="btn" data-close="modalGuard">Cancelar</button>
@@ -1739,10 +1792,11 @@ const ST = {
   incidents:lsGet('incidents') || [],
   ots:      lsGet('ots')       || [],
   messages: lsGet('messages')  || [],
-  guards:   lsGet('guards')    || { Electricidad:'', Fontanería:'' },
+  guards:   lsGet('guards')    || { Electricidad:'', Fontanería:'', Mecánicos:'', Climatización:'' },
   users:    lsGet('users')     || { coordinador: '1234', tecnicos: {} },
   session:  lsGet('session')   || null,
 };
+['Electricidad','Fontanería','Mecánicos','Climatización'].forEach(sec=>{ if(ST.guards[sec]===undefined) ST.guards[sec]=''; });
 
 // Default demo CSV
 const DEMO_CSV = `Nombre,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28
@@ -1770,7 +1824,7 @@ function saveAll(){
 }
 
 // Load demo if empty
-if(!ST.rosters['Fontanería'] && !ST.rosters['Electricidad']){
+if(!SECTORS.some(sec=>ST.rosters[sec])){
   ST.rosters['Fontanería'] = parseRosterCSV(DEMO_CSV,'Fontanería');
   ST.rosters['Electricidad'] = parseRosterCSV(DEMO_ELEC_CSV,'Electricidad');
   saveAll();
@@ -1947,6 +2001,8 @@ function parseMasterXLSX(file){
 // ============================================================
 const SHIFT_COLORS={M:'var(--green)',T:'var(--yellow)',N:'var(--purple)',D:'var(--dim)'};
 const SHIFT_LABELS={M:'Mañana',T:'Tarde',N:'Noche',D:'Descanso'};
+const SHIFT_SHORT={M:'M',T:'T',N:'N',D:'D'};
+const SECTORS=['Electricidad','Fontanería','Mecánicos','Climatización'];
 
 function getTechShift(sector, techName, dateISO){
   const r=ST.rosters[sector];
@@ -2063,9 +2119,11 @@ function getSectorTechs(sector){
 
 function renderKPIs(){
   const date=getDate();
+  const plannerSector=document.querySelector('#sectorFilter .filterChip.active')?.dataset.sector||'all';
+  const scopedSectors=plannerSector==='all'?SECTORS:[plannerSector];
   let active=0,free=0,corr=0,prev=0;
 
-  ['Electricidad','Fontanería'].forEach(sec=>{
+  scopedSectors.forEach(sec=>{
     const techs=getSectorTechs(sec);
     techs.forEach(t=>{ if(t.shift!=='D'){active++;free++;} });
   });
@@ -2085,14 +2143,19 @@ function renderKPIs(){
   animNum($('kpiOT'),otOpen);
 
   // Sector cards
-  ['Electricidad','Fontanería'].forEach(sec=>{
+  document.querySelectorAll('.sectorCard').forEach(card=>{
+    const show=plannerSector==='all'||card.dataset.sector===plannerSector;
+    card.style.display=show?'':'none';
+  });
+
+  SECTORS.forEach(sec=>{
     const techs=getSectorTechs(sec);
     const onShift=techs.filter(t=>t.shift!=='D');
     const guard=ST.guards[sec]||'—';
     const corrSec=ST.incidents.filter(i=>i.sector===sec&&i.status!=='Cerrada').length;
     const load=onShift.length>0?Math.round((assigned.size/onShift.length)*100):0;
 
-    const pfx=sec==='Electricidad'?'elec':'font';
+    const pfx=sec==='Electricidad'?'elec':sec==='Fontanería'?'font':sec==='Mecánicos'?'mec':'cli';
     $(pfx+'Guard').textContent=guard||'—';
     $(pfx+'Free').textContent=onShift.length;
     $(pfx+'Corr').textContent=corrSec;
@@ -2106,9 +2169,11 @@ function renderKPIs(){
 function renderTechGrid(){
   const grid=$('techGrid');
   if(!grid) return;
-  const sector=$('techSectorFilter')?.value||'all';
+  const plannerSector=document.querySelector('#sectorFilter .filterChip.active')?.dataset.sector||'all';
+  const dropdownSector=$('techSectorFilter')?.value||'all';
+  const sector=plannerSector!=='all'?plannerSector:dropdownSector;
   const date=getDate();
-  const sectors=sector==='all'?['Electricidad','Fontanería']:[sector];
+  const sectors=sector==='all'?SECTORS:[sector];
 
   let html='';
   let count=0;
@@ -2160,7 +2225,7 @@ function renderTechFull(){
   const date=getDate();
   let html='';
 
-  ['Electricidad','Fontanería'].forEach(sec=>{
+  SECTORS.forEach(sec=>{
     const r=ST.rosters[sec];
     if(!r) return;
     r.names.forEach(name=>{
@@ -2223,11 +2288,13 @@ function showTechDetail(name, sec){
 // ============================================================
 function renderTray(){
   const corrEl=$('trayCorr'),prevEl=$('trayPrev'),otEl=$('trayOT');
+  const plannerSector=document.querySelector('#sectorFilter .filterChip.active')?.dataset.sector||'all';
   if(!corrEl) return;
 
-  const corr=ST.tasks.filter(t=>t.type==='Correctivo'&&t.status!=='Cerrado');
-  const prev=ST.tasks.filter(t=>t.type==='Preventivo'&&t.status!=='Cerrado');
-  const ot=ST.tasks.filter(t=>t.type==='OT'&&t.status!=='Cerrado');
+  const inScope=t=>plannerSector==='all'||t.sector===plannerSector;
+  const corr=ST.tasks.filter(t=>t.type==='Correctivo'&&t.status!=='Cerrado'&&inScope(t));
+  const prev=ST.tasks.filter(t=>t.type==='Preventivo'&&t.status!=='Cerrado'&&inScope(t));
+  const ot=ST.tasks.filter(t=>t.type==='OT'&&t.status!=='Cerrado'&&inScope(t));
 
   corrEl.innerHTML=corr.length?corr.map(t=>taskCard(t,'corr')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin correctivos</div>';
   prevEl.innerHTML=prev.length?prev.map(t=>taskCard(t,'prev')).join(''):'<div class="empty" style="padding:12px;font-size:11px">Sin preventivos</div>';
@@ -2470,7 +2537,7 @@ function renderCalendar(){
   r.names.forEach((name,ni)=>{
     const row=week.map(d=>{
       const shift=getTechShift(sector,name,d)||'D';
-      return `<div class="calCell ${shift} ${d===today?'todayCol':''}">${shift}</div>`;
+      return `<div class="calCell ${shift} ${d===today?'todayCol':''}" title="${SHIFT_LABELS[shift]||shift}">${SHIFT_LABELS[shift]||shift}</div>`;
     }).join('');
     html+=`<div class="calRow"><div class="calTech">${name}</div>${row}</div>`;
   });
@@ -2505,7 +2572,7 @@ function renderMonthGrid(sector){
     const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
     html+=`<div class="monthDay ${dominant}" title="${iso}">
       <div class="dayNum">${d}</div>
-      <small style="font-size:9px">${counts.M}M ${counts.T}T ${counts.N}N</small>
+      <small style="font-size:9px">${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
     </div>`;
   }
 
@@ -2519,7 +2586,7 @@ function renderGuards(){
   const panel=$('guardPanel');
   if(!panel) return;
 
-  const sectors=['Electricidad','Fontanería'];
+  const sectors=SECTORS;
   let html='';
 
   sectors.forEach(sec=>{
@@ -2626,16 +2693,16 @@ function populateTechSelects(){
     r.names?.forEach(name=>allNames.push({name,sec}));
   });
 
-  ['taskTech','incTech','otTech','guardElec','guardFont'].forEach(id=>{
+  ['taskTech','incTech','otTech','guardElec','guardFont','guardMec','guardCli'].forEach(id=>{
     const el=$(id);
     if(!el) return;
     const isGuard=id.startsWith('guard');
-    const filterSec=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':null;
+    const filterSec=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':id==='guardMec'?'Mecánicos':id==='guardCli'?'Climatización':null;
     const names=filterSec?allNames.filter(x=>x.sec===filterSec):allNames;
     const opts=names.map(x=>`<option value="${x.name}">${x.name} (${x.sec})</option>`).join('');
     el.innerHTML=(isGuard?'<option value="">— Sin guardia —</option>':'<option value="">Sin asignar</option>')+opts;
     if(isGuard){
-      const sector=id==='guardElec'?'Electricidad':'Fontanería';
+      const sector=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':id==='guardMec'?'Mecánicos':'Climatización';
       el.value=ST.guards[sector]||'';
     }
   });
@@ -2713,7 +2780,8 @@ $('sectorFilter').addEventListener('click',e=>{
   if(!chip) return;
   $('sectorFilter').querySelectorAll('.filterChip').forEach(c=>c.classList.remove('active'));
   chip.classList.add('active');
-  renderTechGrid();
+  if($('techSectorFilter')) $('techSectorFilter').value=chip.dataset.sector==='all'?'all':chip.dataset.sector;
+  renderAll();
 });
 
 // Tech filter
@@ -2880,6 +2948,8 @@ $('btnEditGuard')?.addEventListener('click',()=>openModal('modalGuard'));
 $('btnSaveGuard').addEventListener('click',()=>{
   ST.guards['Electricidad']=$('guardElec').value;
   ST.guards['Fontanería']=$('guardFont').value;
+  ST.guards['Mecánicos']=$('guardMec').value;
+  ST.guards['Climatización']=$('guardCli').value;
   saveAll();renderKPIs();renderGuards();closeModal('modalGuard');
   toast('✅ Guardias guardadas');
 });
