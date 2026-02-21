@@ -271,9 +271,12 @@ body{
 .page.active{display:block}
 
 .pageInner{
-  max-width:1280px;margin:0 auto;
-  padding:0 14px;
+  max-width:1520px;margin:0 auto;
+  padding:0 18px;
   display:flex;flex-direction:column;gap:14px;
+}
+@media(max-width:768px){
+  .pageInner{padding:0 12px}
 }
 
 /* ============================================================
@@ -671,6 +674,10 @@ body{
   box-shadow:0 40px 100px rgba(0,0,0,.6);
   opacity:0;transform:translateY(12px) scale(.98);
   transition:opacity var(--dur2) var(--ease),transform var(--dur2) var(--ease);
+}
+#modalTask .modalCard{max-width:720px}
+@media(max-width:768px){
+  #modalTask .modalCard{max-width:100%;padding:16px}
 }
 .modal.open .modalCard{
   opacity:1;transform:translateY(0) scale(1);
@@ -2004,6 +2011,25 @@ const SHIFT_COLORS={M:'var(--green)',T:'var(--yellow)',N:'var(--purple)',D:'var(
 const SHIFT_LABELS={M:'Mañana',T:'Tarde',N:'Noche',D:'Descanso'};
 const SHIFT_SHORT={M:'M',T:'T',N:'N',D:'D'};
 
+const SHIFT_ORDER={M:0,T:1,N:2,D:3};
+
+function getRosterEntriesBySector(sec,date){
+  const r=ST.rosters[sec];
+  if(!r) return [];
+  return r.names.map(name=>({
+    name,
+    sec,
+    shift:getTechShift(sec,name,date)||'D'
+  })).sort((a,b)=>{
+    const byShift=(SHIFT_ORDER[a.shift]??99)-(SHIFT_ORDER[b.shift]??99);
+    return byShift||a.name.localeCompare(b.name,'es',{sensitivity:'base'});
+  });
+}
+
+function formatTechOption(tech){
+  return `${tech.name} (${tech.sec} · ${SHIFT_LABELS[tech.shift]||tech.shift})`;
+}
+
 function getTechShift(sector, techName, dateISO){
   const r=ST.rosters[sector];
   if(!r) return null;
@@ -2175,13 +2201,8 @@ function renderTechGrid(){
   const date=getDate();
   const sectors=sector==='all'?SECTORS:[sector];
 
-  let html='';
-  let count=0;
-  sectors.forEach(sec=>{
-    const r=ST.rosters[sec];
-    if(!r) return;
-    r.names.forEach((name,ni)=>{
-      const shift=getTechShift(sec,name,date)||'D';
+  const entries=sectors.flatMap(sec=>getRosterEntriesBySector(sec,date));
+  const html=entries.map(({name,sec,shift})=>{
       const phone=ST.phones[sec]?.[name]||'';
       const guard=ST.guards[sec]===name;
       const tasks=ST.tasks.filter(t=>t.tech===name&&t.status!=='Cerrado');
@@ -2198,7 +2219,7 @@ function renderTechGrid(){
           ${t.type==='Correctivo'?'🔴':t.type==='Preventivo'?'🟡':'🔵'} ${t.title}
         </div>`).join('');
 
-      html+=`<div class="techCard shift-${shift} ${guard?'guard':''}" data-tech="${name}" data-sec="${sec}" onclick="showTechDetail('${name}','${sec}')">
+      return `<div class="techCard shift-${shift} ${guard?'guard':''}" data-tech="${name}" data-sec="${sec}" onclick="showTechDetail('${name}','${sec}')">
         <div class="techHead">
           <div>
             <div class="techName">${name}</div>
@@ -2211,31 +2232,27 @@ function renderTechGrid(){
         ${phone?`<div style="margin-top:6px"><a href="tel:${phone}" class="guardPhone" style="font-size:12px">📞 ${phone}</a></div>`:''}
         ${tasksHtml}
       </div>`;
-      count++;
-    });
-  });
+  }).join('');
 
   grid.innerHTML=html||'<div class="empty">Sin técnicos en turno</div>';
+  bindPlannerDragAndDrop();
 }
 
 function renderTechFull(){
   const grid=$('techGridFull');
   if(!grid) return;
-  // Same as renderTechGrid but for all techs page
   const date=getDate();
-  let html='';
+  const activeSector=document.querySelector('#techFilter .filterChip.active')?.dataset.sector||'all';
+  const sectors=activeSector==='all'?SECTORS:[activeSector];
 
-  SECTORS.forEach(sec=>{
-    const r=ST.rosters[sec];
-    if(!r) return;
-    r.names.forEach(name=>{
-      const shift=getTechShift(sec,name,date)||'D';
+  const entries=sectors.flatMap(sec=>getRosterEntriesBySector(sec,date));
+  const html=entries.map(({name,sec,shift})=>{
       const phone=ST.phones[sec]?.[name]||'';
       const guard=ST.guards[sec]===name;
       const tasks=ST.tasks.filter(t=>t.tech===name&&t.status!=='Cerrado');
       const load=Math.min(tasks.length*25,100);
 
-      html+=`<div class="techCard shift-${shift} ${guard?'guard':''}" onclick="showTechDetail('${name}','${sec}')">
+      return `<div class="techCard shift-${shift} ${guard?'guard':''}" onclick="showTechDetail('${name}','${sec}')">
         <div class="techHead">
           <div>
             <div class="techName">${name}</div>
@@ -2250,8 +2267,7 @@ function renderTechFull(){
         <div class="loadLabel"><span>${tasks.length} tareas</span><span>${load}%</span></div>
         ${phone?`<div style="margin-top:6px"><a href="tel:${phone}" style="font-size:12px;color:var(--blue)">📞 ${phone}</a></div>`:''}
       </div>`;
-    });
-  });
+  }).join('');
 
   grid.innerHTML=html||'<div class="empty">Sin técnicos cargados</div>';
 }
@@ -2302,7 +2318,7 @@ function renderTray(){
 }
 
 function taskCard(t,cls){
-  return `<div class="taskCard ${cls}" onclick="showTaskDetail('${t.id}')">
+  return `<div class="taskCard ${cls}" draggable="true" data-task-id="${t.id}" onclick="showTaskDetail('${t.id}')">
     <div class="tt">${t.title}</div>
     <div class="td">${t.tech||'Sin asignar'} · ${t.sector}</div>
   </div>`;
@@ -2688,23 +2704,63 @@ function saveTechPass(name){
 // POPULATE SELECTS with tech names
 // ============================================================
 function populateTechSelects(){
-  const allNames=[];
-  Object.entries(ST.rosters).forEach(([sec,r])=>{
-    r.names?.forEach(name=>allNames.push({name,sec}));
-  });
+  const date=getDate();
+  const allTechs=SECTORS.flatMap(sec=>getRosterEntriesBySector(sec,date));
 
-  ['taskTech','incTech','otTech','guardElec','guardFont','guardMec','guardCli'].forEach(id=>{
+  function fillTechSelect(selectId, sectorValue){
+    const el=$(selectId);
+    if(!el) return;
+    const prev=el.value;
+    const scoped=sectorValue?allTechs.filter(t=>t.sec===sectorValue):allTechs;
+    el.innerHTML='<option value="">Sin asignar</option>'+scoped.map(t=>`<option value="${t.name}">${formatTechOption(t)}</option>`).join('');
+    if(prev && scoped.some(t=>t.name===prev)) el.value=prev;
+  }
+
+  fillTechSelect('taskTech',$('taskSector')?.value);
+  fillTechSelect('incTech',$('incSector')?.value);
+  fillTechSelect('otTech',$('otSector')?.value);
+
+  ['guardElec','guardFont','guardMec','guardCli'].forEach(id=>{
     const el=$(id);
     if(!el) return;
-    const isGuard=id.startsWith('guard');
-    const filterSec=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':id==='guardMec'?'Mecánicos':id==='guardCli'?'Climatización':null;
-    const names=filterSec?allNames.filter(x=>x.sec===filterSec):allNames;
-    const opts=names.map(x=>`<option value="${x.name}">${x.name} (${x.sec})</option>`).join('');
-    el.innerHTML=(isGuard?'<option value="">— Sin guardia —</option>':'<option value="">Sin asignar</option>')+opts;
-    if(isGuard){
-      const sector=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':id==='guardMec'?'Mecánicos':'Climatización';
-      el.value=ST.guards[sector]||'';
-    }
+    const sector=id==='guardElec'?'Electricidad':id==='guardFont'?'Fontanería':id==='guardMec'?'Mecánicos':'Climatización';
+    const options=allTechs
+      .filter(t=>t.sec===sector)
+      .map(t=>`<option value="${t.name}">${t.name}</option>`)
+      .join('');
+    el.innerHTML='<option value="">— Sin guardia —</option>'+options;
+    el.value=ST.guards[sector]||'';
+  });
+}
+
+function bindPlannerDragAndDrop(){
+  const cards=document.querySelectorAll('#trayCorr .taskCard, #trayPrev .taskCard, #trayOT .taskCard');
+  cards.forEach(card=>{
+    card.addEventListener('dragstart',()=>card.classList.add('dragging'));
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  });
+
+  document.querySelectorAll('#techGrid .techCard').forEach(card=>{
+    card.addEventListener('dragover',e=>{
+      e.preventDefault();
+      card.style.boxShadow='0 0 0 2px rgba(58,159,255,.45) inset, 0 0 18px rgba(58,159,255,.25)';
+    });
+    card.addEventListener('dragleave',()=>{ card.style.boxShadow=''; });
+    card.addEventListener('drop',()=>{
+      card.style.boxShadow='';
+      const dragging=document.querySelector('.taskCard.dragging');
+      if(!dragging) return;
+      const taskId=dragging.dataset.taskId;
+      const tech=card.dataset.tech;
+      const sec=card.dataset.sec;
+      const task=ST.tasks.find(t=>t.id===taskId);
+      if(!task||!tech) return;
+      task.tech=tech;
+      task.sector=sec||task.sector;
+      saveAll();
+      renderAll();
+      toast(`✅ ${task.title} asignada a ${tech}`);
+    });
   });
 }
 
@@ -2803,6 +2859,11 @@ if(techFilterEl) techFilterEl.addEventListener('click',e=>{
 
 // Tech sector filter dropdown
 $('techSectorFilter')?.addEventListener('change',renderTechGrid);
+
+['taskSector','incSector','otSector'].forEach(id=>{
+  $(id)?.addEventListener('change',populateTechSelects);
+});
+
 
 // Calendar nav
 $('btnWeekPrev').addEventListener('click',()=>{calWeekOffset--;renderCalendar()});
