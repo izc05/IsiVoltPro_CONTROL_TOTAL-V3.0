@@ -1796,6 +1796,7 @@ const ST = {
   users:    lsGet('users')     || { coordinador: '1234', tecnicos: {} },
   session:  lsGet('session')   || null,
 };
+const SECTORS=['Electricidad','Fontanería','Mecánicos','Climatización'];
 ['Electricidad','Fontanería','Mecánicos','Climatización'].forEach(sec=>{ if(ST.guards[sec]===undefined) ST.guards[sec]=''; });
 
 // Default demo CSV
@@ -2002,7 +2003,6 @@ function parseMasterXLSX(file){
 const SHIFT_COLORS={M:'var(--green)',T:'var(--yellow)',N:'var(--purple)',D:'var(--dim)'};
 const SHIFT_LABELS={M:'Mañana',T:'Tarde',N:'Noche',D:'Descanso'};
 const SHIFT_SHORT={M:'M',T:'T',N:'N',D:'D'};
-const SECTORS=['Electricidad','Fontanería','Mecánicos','Climatización'];
 
 function getTechShift(sector, techName, dateISO){
   const r=ST.rosters[sector];
