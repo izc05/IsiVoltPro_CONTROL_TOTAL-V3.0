@@ -499,6 +499,25 @@ body{
   transition:all var(--dur1) var(--ease);
   position:relative;
 }
+.taskCard.selectedAssign{
+  border-color:rgba(58,159,255,.75);
+  box-shadow:0 0 0 2px rgba(58,159,255,.35) inset, 0 0 18px rgba(58,159,255,.25);
+}
+.assignBtn{
+  display:none;
+  margin-top:8px;
+  width:100%;
+  border:1px solid rgba(58,159,255,.35);
+  background:rgba(58,159,255,.14);
+  color:#bfe3ff;
+  border-radius:10px;
+  padding:6px 8px;
+  font:700 11px 'Outfit',sans-serif;
+}
+.techCard.dropReady{
+  border-color:rgba(58,159,255,.7)!important;
+  box-shadow:0 0 0 2px rgba(58,159,255,.3) inset;
+}
 .taskCard:active{cursor:grabbing;transform:scale(.98)}
 .taskCard:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
 .taskCard .tt{font-size:13px;font-weight:800;line-height:1.3}
@@ -1096,6 +1115,18 @@ body{
   .clock{font-size:14px}
   .brandName{font-size:15px}
   .topSearch{max-width:120px}
+}
+@media(max-width:900px){
+  .userName{display:none}
+  .topSearch{max-width:200px}
+}
+@media(max-width:640px){
+  .topbar{padding:0 10px;gap:8px}
+  .topSearch{display:none}
+  .clock{font-size:13px}
+  .datePill{padding:4px 8px}
+  .datePill input{width:78px}
+  .assignBtn{display:block}
 }
 </style>
 </head>
@@ -1976,11 +2007,43 @@ function todayISO(){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6) }
 
+
+function normalizeHeader(v=''){
+  return String(v||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+function getRowValue(row, keys){
+  if(!row||!keys?.length) return '';
+  const map={};
+  Object.keys(row).forEach(k=>{ map[normalizeHeader(k)]=row[k]; });
+  for(const key of keys){
+    const val=map[normalizeHeader(key)];
+    if(val!==undefined && val!==null && String(val).trim()!=='') return String(val).trim();
+  }
+  return '';
+}
+function readWorkbook(file, onOk, onErrMsg='❌ Error leyendo Excel'){
+  if(!window.XLSX){ toast('❌ Librería Excel no disponible'); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=e.target.result;
+      const wb=XLSX.read(data,{type:'array'});
+      onOk(wb);
+    }catch(err){
+      toast(onErrMsg);
+      console.error(err);
+    }
+  };
+  reader.onerror=()=>toast(onErrMsg);
+  reader.readAsArrayBuffer(file);
+}
+
 function toLocalISO(dateObj){
   const local=new Date(dateObj.getTime()-dateObj.getTimezoneOffset()*60000);
   return local.toISOString().slice(0,10);
 }
 let selectedNoteDay='';
+let selectedTaskForAssignId='';
 
 function toast(msg, ms=2000){
   const t=$('toast');
@@ -2021,26 +2084,15 @@ function parseRosterCSV(text, sector){
 }
 
 function parseXLSX(file,sector,cb){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_csv(ws);
-      cb(parseRosterCSV(rows,sector));
-    }catch(err){
-      toast('❌ Error leyendo Excel');
-      console.error(err);
-    }
-  };
-  reader.readAsBinaryString(file);
+  readWorkbook(file,wb=>{
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_csv(ws);
+    cb(parseRosterCSV(rows,sector));
+  },'❌ Error leyendo Excel');
 }
 
 function parseOTsFromXLSX(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
+  readWorkbook(file,wb=>{
       // Try to find OT sheet
       let sheetName=wb.SheetNames.find(n=>/ot/i.test(n))||wb.SheetNames[0];
       const ws=wb.Sheets[sheetName];
@@ -2048,13 +2100,13 @@ function parseOTsFromXLSX(file){
       rows.forEach(row=>{
         const ot={
           id:uid(),
-          num:row['Número']||row['num']||row['OT']||'',
-          title:row['Descripción']||row['titulo']||row['title']||'',
-          sector:row['Sector']||'Electricidad',
-          tech:row['Técnico']||row['tecnico']||'',
-          priority:row['Prioridad']||row['priority']||'media',
-          status:row['Estado']||'Pendiente',
-          note:row['Nota']||row['nota']||'',
+          num:getRowValue(row,['Número','Numero','num','OT'])||'',
+          title:getRowValue(row,['Descripción','Descripcion','titulo','title'])||'',
+          sector:getRowValue(row,['Sector'])||'Electricidad',
+          tech:getRowValue(row,['Técnico','Tecnico','tecnico'])||'',
+          priority:getRowValue(row,['Prioridad','priority'])||'media',
+          status:getRowValue(row,['Estado'])||'Pendiente',
+          note:getRowValue(row,['Nota','nota'])||'',
           created:new Date().toISOString(),
         };
         if(ot.title) ST.ots.push(ot);
@@ -2062,20 +2114,12 @@ function parseOTsFromXLSX(file){
       saveAll();
       renderOTs();
       toast(`✅ ${rows.length} OTs importadas`);
-    }catch(err){
-      toast('❌ Error leyendo Excel de OTs');
-      console.error(err);
-    }
-  };
-  reader.readAsBinaryString(file);
+  },'❌ Error leyendo Excel de OTs');
 }
 
 // Master Excel import (multiple sheets)
 function parseMasterXLSX(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
+  readWorkbook(file,wb=>{
       let imported=[];
 
       wb.SheetNames.forEach(name=>{
@@ -2092,20 +2136,21 @@ function parseMasterXLSX(file){
         } else if(/ot|orden/i.test(name)){
           const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
           rows.forEach(row=>{
-            if(row['Descripción']||row['titulo']){
-              ST.ots.push({id:uid(),num:row['Número']||'',title:row['Descripción']||row['titulo']||'',
-                sector:row['Sector']||'Electricidad',tech:row['Técnico']||'',
-                priority:row['Prioridad']||'media',status:row['Estado']||'Pendiente',
-                note:row['Nota']||'',created:new Date().toISOString()});
+            const title=getRowValue(row,['Descripción','Descripcion','titulo','title']);
+            if(title){
+              ST.ots.push({id:uid(),num:getRowValue(row,['Número','Numero'])||'',title,
+                sector:getRowValue(row,['Sector'])||'Electricidad',tech:getRowValue(row,['Técnico','Tecnico'])||'',
+                priority:getRowValue(row,['Prioridad'])||'media',status:getRowValue(row,['Estado'])||'Pendiente',
+                note:getRowValue(row,['Nota'])||'',created:new Date().toISOString()});
             }
           });
           imported.push('OTs');
         } else if(/tel|phone/i.test(name)){
           const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
           rows.forEach(row=>{
-            const sec=row['Sector']||'Fontanería';
-            const name2=row['Nombre']||row['nombre']||'';
-            const phone=row['Teléfono']||row['telefono']||row['phone']||'';
+            const sec=getRowValue(row,['Sector'])||'Fontanería';
+            const name2=getRowValue(row,['Nombre','nombre'])||'';
+            const phone=getRowValue(row,['Teléfono','Telefono','telefono','phone'])||'';
             if(!ST.phones[sec]) ST.phones[sec]={};
             if(name2) ST.phones[sec][name2]=phone;
           });
@@ -2113,11 +2158,12 @@ function parseMasterXLSX(file){
         } else if(/incid/i.test(name)){
           const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
           rows.forEach(row=>{
-            if(row['Descripción']||row['titulo']){
-              ST.incidents.push({id:uid(),title:row['Descripción']||row['titulo']||'',
-                sector:row['Sector']||'Electricidad',severity:row['Severidad']||'media',
-                location:row['Ubicación']||'',tech:row['Técnico']||'',
-                status:row['Estado']||'Pendiente',note:row['Nota']||'',
+            const title=getRowValue(row,['Descripción','Descripcion','titulo','title']);
+            if(title){
+              ST.incidents.push({id:uid(),title,
+                sector:getRowValue(row,['Sector'])||'Electricidad',severity:getRowValue(row,['Severidad'])||'media',
+                location:getRowValue(row,['Ubicación','Ubicacion'])||'',tech:getRowValue(row,['Técnico','Tecnico'])||'',
+                status:getRowValue(row,['Estado'])||'Pendiente',note:getRowValue(row,['Nota'])||'',
                 created:new Date().toISOString()});
             }
           });
@@ -2129,13 +2175,7 @@ function parseMasterXLSX(file){
       renderAll();
       $('importStatus').textContent=`✅ Importado: ${imported.join(', ')}`;
       toast(`✅ Excel importado (${imported.join(', ')})`);
-    }catch(err){
-      toast('❌ Error procesando Excel');
-      console.error(err);
-      $('importStatus').textContent='❌ Error: '+err.message;
-    }
-  };
-  reader.readAsBinaryString(file);
+  },'❌ Error procesando Excel');
 }
 
 // ============================================================
@@ -2429,6 +2469,7 @@ function renderTechGrid(){
         <div class="loadBar"><div class="loadFill" style="width:${load}%"></div></div>
         <div class="loadLabel"><span>${tasks.length} tarea${tasks.length!==1?'s':''}</span><span>${load}% carga</span></div>
         ${phone?`<div style="margin-top:6px"><a href="tel:${phone}" class="guardPhone" style="font-size:12px">📞 ${phone}</a></div>`:''}
+        <button type="button" class="assignBtn" onclick="event.stopPropagation();assignSelectedTaskToTech('${name}','${sec}')">⬇️ Asignar tarea seleccionada</button>
         ${tasksHtml}
       </div>`;
   }).join('');
@@ -2519,9 +2560,11 @@ function renderTray(){
 }
 
 function taskCard(t,cls){
-  return `<div class="taskCard ${cls}" draggable="true" data-task-id="${t.id}" onclick="showTaskDetail('${t.id}')">
+  const selected=selectedTaskForAssignId===t.id?'selectedAssign':'';
+  return `<div class="taskCard ${cls} ${selected}" draggable="true" data-task-id="${t.id}" onclick="showTaskDetail('${t.id}')">
     <div class="tt">${t.title}</div>
     <div class="td">${t.tech||'Sin asignar'} · ${t.sector}</div>
+    <button type="button" class="assignBtn" onclick="event.stopPropagation();selectTaskForAssign('${t.id}')">🎯 Seleccionar para asignar</button>
   </div>`;
 }
 
@@ -3078,11 +3121,38 @@ function renderGuardPhoneShiftForm(){
   });
 }
 
+function selectTaskForAssign(taskId){
+  selectedTaskForAssignId=taskId;
+  renderTray();
+  document.querySelectorAll('#techGrid .techCard').forEach(card=>card.classList.add('dropReady'));
+  toast('🎯 Tarea seleccionada. Ahora pulsa un técnico.');
+}
+
+function assignSelectedTaskToTech(tech, sec){
+  const taskId=selectedTaskForAssignId;
+  if(!taskId){ toast('⚠️ Selecciona una tarea primero'); return; }
+  const task=ST.tasks.find(t=>t.id===taskId);
+  if(!task||!tech) return;
+  task.tech=tech;
+  task.sector=sec||task.sector;
+  selectedTaskForAssignId='';
+  saveAll();
+  renderAll();
+  toast(`✅ ${task.title} asignada a ${tech}`);
+}
+
 function bindPlannerDragAndDrop(){
   const cards=document.querySelectorAll('#trayCorr .taskCard, #trayPrev .taskCard, #trayOT .taskCard, #trayGuard .taskCard');
   cards.forEach(card=>{
-    card.addEventListener('dragstart',()=>card.classList.add('dragging'));
-    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+    card.addEventListener('dragstart',()=>{
+      selectedTaskForAssignId=card.dataset.taskId||'';
+      card.classList.add('dragging');
+      document.querySelectorAll('#techGrid .techCard').forEach(tc=>tc.classList.add('dropReady'));
+    });
+    card.addEventListener('dragend',()=>{
+      card.classList.remove('dragging');
+      document.querySelectorAll('#techGrid .techCard').forEach(tc=>tc.classList.remove('dropReady'));
+    });
   });
 
   document.querySelectorAll('#techGrid .techCard').forEach(card=>{
@@ -3094,17 +3164,14 @@ function bindPlannerDragAndDrop(){
     card.addEventListener('drop',()=>{
       card.style.boxShadow='';
       const dragging=document.querySelector('.taskCard.dragging');
-      if(!dragging) return;
-      const taskId=dragging.dataset.taskId;
-      const tech=card.dataset.tech;
-      const sec=card.dataset.sec;
-      const task=ST.tasks.find(t=>t.id===taskId);
-      if(!task||!tech) return;
-      task.tech=tech;
-      task.sector=sec||task.sector;
-      saveAll();
-      renderAll();
-      toast(`✅ ${task.title} asignada a ${tech}`);
+      const taskId=dragging?.dataset.taskId||selectedTaskForAssignId;
+      selectedTaskForAssignId=taskId||'';
+      assignSelectedTaskToTech(card.dataset.tech,card.dataset.sec);
+    });
+    card.addEventListener('click',()=>{
+      if(window.matchMedia('(max-width: 640px)').matches && selectedTaskForAssignId){
+        assignSelectedTaskToTech(card.dataset.tech,card.dataset.sec);
+      }
     });
   });
 }
