@@ -54,6 +54,9 @@ body{
   font-family:'Syne',system-ui,sans-serif;
   font-size:15px;
   line-height:1.45;
+  text-rendering:geometricPrecision;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
   background:var(--bg);
   color:var(--text);
   min-height:100dvh;
@@ -594,23 +597,29 @@ body{
   border:1px solid var(--line);
   background:rgba(14,24,48,.8);
   font-size:14px;font-weight:800;
+  letter-spacing:.2px;
+  text-shadow:0 1px 1px rgba(0,0,0,.25);
 }
 .calHeadCell{
   padding:11px 8px;border-radius:var(--r-sm);
   border:1px solid var(--line);
   background:rgba(14,24,48,.8);
-  text-align:center;font-size:13px;font-weight:800;
+  text-align:center;font-size:14px;font-weight:800;
   color:#cde4ff;
+  letter-spacing:.25px;
 }
 .calCell{
   padding:12px 8px;border-radius:var(--r-sm);
   border:1px solid var(--line);
-  text-align:center;font-size:15px;font-weight:900;
-  letter-spacing:.2px;
+  text-align:center;font-size:15px;font-weight:800;
+  letter-spacing:.35px;
   cursor:pointer;
   transition:all var(--dur1) var(--ease);
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
 }
 .calCell:hover{filter:brightness(1.15)}
+.calCell.editable{cursor:pointer}
+.calCell.readonly{cursor:default}
 .calCell.M{background:rgba(29,232,122,.3);color:#98ffc0;border-color:rgba(29,232,122,.4)}
 .calCell.T{background:rgba(255,210,77,.28);color:#ffe99d;border-color:rgba(255,210,77,.4)}
 .calCell.N{background:rgba(185,79,255,.28);color:#d8aaff;border-color:rgba(185,79,255,.4)}
@@ -945,11 +954,34 @@ body{
 .monthGrid{
   display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
 }
+.monthMeta{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:12px;
+}
+.monthTitle{
+  font-size:18px;font-weight:900;letter-spacing:.35px;color:#d9ebff;
+  text-shadow:0 2px 4px rgba(0,0,0,.4);
+  text-transform:capitalize;
+}
+.monthTag{
+  font-size:11px;font-weight:800;color:#93f6bc;
+  border:1px solid rgba(29,232,122,.35);
+  background:rgba(29,232,122,.12);
+  border-radius:999px;padding:4px 10px;
+}
 .monthDay{
   border-radius:8px;border:1px solid rgba(255,255,255,.06);
-  padding:8px;font-size:12px;min-height:68px;
+  padding:10px 9px;font-size:12px;min-height:76px;
+  display:flex;flex-direction:column;justify-content:flex-start;
+  line-height:1.2;
 }
-.monthDay .dayNum{font-weight:800;opacity:.8}
+.monthDay .dayNum{font-size:18px;font-weight:900;opacity:.95;letter-spacing:.3px}
+.monthDay small{margin-top:6px;font-size:11px;font-weight:800;letter-spacing:.3px;opacity:.95}
+.monthDay.today{
+  outline:2px solid rgba(58,159,255,.75);
+  box-shadow:0 0 0 1px rgba(58,159,255,.45) inset,0 0 16px rgba(58,159,255,.25);
+  transform:translateY(-2px);
+}
 .monthDay.M{background:rgba(29,232,122,.2);color:#98ffc0}
 .monthDay.T{background:rgba(255,210,77,.18);color:#ffe99d}
 .monthDay.N{background:rgba(185,79,255,.18);color:#d8aaff}
@@ -1324,7 +1356,7 @@ body{
               📂 Subir Excel
               <input type="file" accept=".xlsx,.xls,.csv" id="rosterFile" hidden />
             </label>
-            <button class="btn sm" id="btnExportRoster">⬇️ Exportar</button>
+            <button class="btn sm" type="button" id="btnExportRoster">⬇️ Descargar Excel</button>
           </div>
         </div>
         <div class="muted">Formato: primera columna = nombres, cabecera = días 1..31, celdas = turno (M/T/N/D)</div>
@@ -1341,7 +1373,10 @@ body{
 
       <!-- Monthly heatmap -->
       <div class="section enter">
-        <div style="font-size:13px;font-weight:800;margin-bottom:10px">📅 Vista mensual</div>
+        <div class="monthMeta">
+          <div class="monthTitle" id="monthTitle">Mes</div>
+          <div class="monthTag" id="monthUpdated">Actualizado</div>
+        </div>
         <div class="monthGrid" id="monthGrid">
           <div class="empty" style="grid-column:span 7">Sin datos</div>
         </div>
@@ -2019,6 +2054,37 @@ function parseMasterXLSX(file){
 // ============================================================
 const SHIFT_COLORS={M:'var(--green)',T:'var(--yellow)',N:'var(--purple)',D:'var(--dim)'};
 const SHIFT_LABELS={M:'Mañana',T:'Tarde',N:'Noche',D:'Descanso'};
+
+const SHIFT_SEQUENCE=['M','T','N','D'];
+
+function rotateShift(shift){
+  const i=SHIFT_SEQUENCE.indexOf((shift||'D').split('/')[0]);
+  return SHIFT_SEQUENCE[(i+1)%SHIFT_SEQUENCE.length];
+}
+
+function bindCalendarEdition(){
+  document.querySelectorAll('#calTable .calCell.editable[data-tech][data-day]').forEach(cell=>{
+    cell.addEventListener('click',()=>{
+      const tech=cell.dataset.tech;
+      const day=cell.dataset.day;
+      const sector=cell.dataset.sector;
+      const current=(getTechShift(sector,tech,day)||'D').split('/')[0];
+      const next=rotateShift(current);
+      const ok=confirm(`⚠️ Vas a cambiar el turno de ${tech} el ${day} de ${SHIFT_LABELS[current]||current} a ${SHIFT_LABELS[next]||next}. ¿Continuar?`);
+      if(!ok) return;
+      const dayIdx=(ST.rosters[sector]?.days||[]).indexOf(day.slice(8));
+      const rowIdx=(ST.rosters[sector]?.names||[]).findIndex(n=>n===tech);
+      if(dayIdx<0 || rowIdx<0){
+        toast('⚠️ No se pudo actualizar el turno');
+        return;
+      }
+      ST.rosters[sector].matrix[rowIdx][dayIdx]=next;
+      saveAll();
+      renderCalendar();
+      toast(`✅ Turno actualizado: ${tech} → ${SHIFT_LABELS[next]||next}`);
+    });
+  });
+}
 const SHIFT_SHORT={M:'M',T:'T',N:'N',D:'D'};
 
 const SHIFT_ORDER={M:0,T:1,N:2,D:3};
@@ -2590,6 +2656,7 @@ function renderCalendar(){
     return;
   }
 
+  const canEdit=isCoord;
   const today=todayISO();
   const dayNames=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
@@ -2602,7 +2669,9 @@ function renderCalendar(){
   namesToRender.forEach(name=>{
     const row=week.map(d=>{
       const shift=getTechShift(sector,name,d)||'D';
-      return `<div class="calCell ${shift} ${d===today?'todayCol':''}" title="${SHIFT_LABELS[shift]||shift}">${SHIFT_LABELS[shift]||shift}</div>`;
+      const title=canEdit?'Click para cambiar turno':(SHIFT_LABELS[shift]||shift);
+      const extra=canEdit?` data-tech="${name}" data-day="${d}" data-sector="${sector}"`:' aria-readonly="true"';
+      return `<div class="calCell ${shift} ${d===today?'todayCol':''} ${canEdit?'editable':'readonly'}" title="${title}"${extra}>${SHIFT_LABELS[shift]||shift}</div>`;
     }).join('');
     html+=`<div class="calRow"><div class="calTech">${name}</div>${row}</div>`;
   });
@@ -2612,17 +2681,28 @@ function renderCalendar(){
   }
 
   calTable.innerHTML=html;
+  if(canEdit) bindCalendarEdition();
   renderMonthGrid(sector);
 }
 
 function renderMonthGrid(sector){
   const grid=$('monthGrid');
   if(!grid) return;
-  const r=ST.rosters[sector];
-  if(!r){grid.innerHTML='<div class="empty" style="grid-column:span 7">Sin datos</div>';return;}
 
   const date=getDate();
   const {y,m}=isoToYMD(date);
+  const monthTitle=$('monthTitle');
+  if(monthTitle){
+    const label=new Date(`${y}-${String(m).padStart(2,'0')}-01T00:00:00`).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+    monthTitle.textContent=`📅 ${label}`;
+  }
+  const monthUpdated=$('monthUpdated');
+  if(monthUpdated){
+    const today=todayISO();
+    const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    monthUpdated.textContent=`Actualizado · ${today} ${now}`;
+  }
+
   const daysInMonth=new Date(y,m,0).getDate();
   const firstDay=new Date(y,m-1,1).getDay()||7;
 
@@ -2631,26 +2711,34 @@ function renderMonthGrid(sector){
 
   const isCoord=currentUser?.role==='coord';
   const techName=currentUser?.name;
+  const today=todayISO();
+  const rosterAvailable=isCoord
+    ? Object.values(ST.rosters).some(rr=>rr?.names?.length)
+    : !!ST.rosters[sector];
+  if(!rosterAvailable){grid.innerHTML='<div class="empty" style="grid-column:span 7">Sin datos</div>';return;}
 
   for(let d=1;d<=daysInMonth;d++){
     const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if(isCoord){
       const counts={M:0,T:0,N:0,D:0};
-      r.names.forEach(name=>{
-        const sh=getTechShift(sector,name,iso)||'D';
-        const k=sh.split('/')[0];
-        if(counts[k]!==undefined) counts[k]++;
+      Object.entries(ST.rosters).forEach(([sec,rr])=>{
+        (rr?.names||[]).forEach(name=>{
+          const sh=getTechShift(sec,name,iso)||'D';
+          const k=sh.split('/')[0];
+          if(counts[k]!==undefined) counts[k]++;
+        });
       });
       const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
-      html+=`<div class="monthDay ${dominant}" title="${iso}">
+      html+=`<div class="monthDay ${dominant} ${iso===today?'today':''}" title="${iso}">
         <div class="dayNum">${d}</div>
-        <small style="font-size:9px">${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
+        <small>${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
       </div>`;
     } else {
-      const shift=(techName&&r.names.includes(techName)?(getTechShift(sector,techName,iso)||'D'):'D').split('/')[0];
-      html+=`<div class="monthDay ${shift}" title="${iso}">
+      const r=ST.rosters[sector];
+      const shift=(techName&&r?.names?.includes(techName)?(getTechShift(sector,techName,iso)||'D'):'D').split('/')[0];
+      html+=`<div class="monthDay ${shift} ${iso===today?'today':''}" title="${iso}">
         <div class="dayNum">${d}</div>
-        <small style="font-size:10px;font-weight:800">${SHIFT_LABELS[shift]||'—'}</small>
+        <small>${SHIFT_LABELS[shift]||'—'}</small>
       </div>`;
     }
   }
@@ -2974,11 +3062,27 @@ $('btnExportRoster').addEventListener('click',()=>{
   const r=ST.rosters[sector];
   if(!r){toast('Sin datos para exportar');return;}
   const rows=[['Nombre',...r.days],...r.names.map((n,i)=>[n,...r.matrix[i]])];
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,sector);
-  XLSX.writeFile(wb,`Cuadrante_${sector}_${getDate()}.xlsx`);
-  toast('⬇️ Exportado');
+
+  if(window.XLSX?.utils){
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,sector);
+    XLSX.writeFile(wb,`Cuadrante_${sector}_${getDate()}.xlsx`);
+    toast('⬇️ Excel exportado');
+    return;
+  }
+
+  const csv=rows.map(row=>row.map(v=>`"${String(v??'').replaceAll('\"','\"\"')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Cuadrante_${sector}_${getDate()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('⬇️ Descargado en CSV (modo compatibilidad)');
 });
 
 // Import OTs
