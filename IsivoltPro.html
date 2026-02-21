@@ -585,27 +585,27 @@ body{
 }
 .calHeader,.calRow{
   display:grid;
-  grid-template-columns:minmax(160px,1.5fr) repeat(7,minmax(72px,1fr));
+  grid-template-columns:minmax(180px,1.5fr) repeat(7,minmax(84px,1fr));
   gap:5px;align-items:center;
 }
 .calTechHead,.calTech{
-  padding:8px 10px;
+  padding:11px 12px;
   border-radius:var(--r-sm);
   border:1px solid var(--line);
   background:rgba(14,24,48,.8);
-  font-size:12px;font-weight:800;
+  font-size:14px;font-weight:800;
 }
 .calHeadCell{
-  padding:8px 6px;border-radius:var(--r-sm);
+  padding:11px 8px;border-radius:var(--r-sm);
   border:1px solid var(--line);
   background:rgba(14,24,48,.8);
-  text-align:center;font-size:11px;font-weight:800;
+  text-align:center;font-size:13px;font-weight:800;
   color:#cde4ff;
 }
 .calCell{
-  padding:8px 6px;border-radius:var(--r-sm);
+  padding:12px 8px;border-radius:var(--r-sm);
   border:1px solid var(--line);
-  text-align:center;font-size:12px;font-weight:900;
+  text-align:center;font-size:15px;font-weight:900;
   letter-spacing:.2px;
   cursor:pointer;
   transition:all var(--dur1) var(--ease);
@@ -943,11 +943,11 @@ body{
    MONTH CALENDAR
    ============================================================ */
 .monthGrid{
-  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+  display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
 }
 .monthDay{
   border-radius:8px;border:1px solid rgba(255,255,255,.06);
-  padding:4px;font-size:10px;min-height:44px;
+  padding:8px;font-size:12px;min-height:68px;
 }
 .monthDay .dayNum{font-weight:800;opacity:.8}
 .monthDay.M{background:rgba(29,232,122,.2);color:#98ffc0}
@@ -1302,7 +1302,7 @@ body{
     <div class="pageInner">
       <div class="sectionHead enter">
         <div class="sectionTitle"><span class="dot"></span>Cuadrante semanal</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div id="calendarControls" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select class="select" id="calSector" style="width:auto;padding:6px 10px;font-size:12px">
             <option value="Electricidad">Electricidad</option>
             <option value="Fontanería">Fontanería</option>
@@ -1316,7 +1316,7 @@ body{
       </div>
 
       <!-- Import zone -->
-      <div class="section enter">
+      <div class="section enter" id="calendarImportSection">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
           <span style="font-size:13px;font-weight:800">📥 Importar cuadrante Excel</span>
           <div style="display:flex;gap:8px">
@@ -1331,7 +1331,7 @@ body{
       </div>
 
       <!-- Weekly calendar -->
-      <div class="section enter">
+      <div class="section enter" id="calendarWeeklySection">
         <div class="calWrap">
           <div class="calTable" id="calTable">
             <div class="empty">Importa un Excel para ver el cuadrante</div>
@@ -1490,6 +1490,16 @@ body{
       <!-- Users -->
       <div class="section enter">
         <div style="font-size:14px;font-weight:800;margin-bottom:14px">👥 Usuarios y contraseñas</div>
+        <div class="formRow" style="margin-bottom:12px;max-width:620px">
+          <select class="select" id="userCategoryFilter" style="max-width:220px">
+            <option value="all">Todas las categorías</option>
+            <option value="Electricidad">Electricidad</option>
+            <option value="Fontanería">Fontanería</option>
+            <option value="Mecánicos">Mecánicos</option>
+            <option value="Climatización">Climatización</option>
+          </select>
+          <input class="input" id="userNameFilter" type="text" placeholder="Buscar técnico por nombre" />
+        </div>
         <div id="usersList" class="techGrid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
           <div class="empty">Sin usuarios</div>
         </div>
@@ -2100,12 +2110,40 @@ function doLogout(){
 
 function applyRoleUI(){
   const isCoord=currentUser?.role==='coord';
+  const allowedPages=isCoord
+    ? ['planner','tech','calendar','incidents','ots','guards','messages','admin']
+    : ['calendar','incidents','ots','messages'];
+
   document.querySelectorAll('.hiddenCoord').forEach(el=>{
     el.style.display=isCoord?'':'none';
   });
+
+  document.querySelectorAll('[data-page]').forEach(el=>{
+    const page=el.dataset.page;
+    if(!page) return;
+    el.style.display=allowedPages.includes(page)?'':'none';
+  });
+
+  $('msgForm').style.display=isCoord?'':'none';
+
+  const title=document.querySelector('#page-calendar .sectionHead .sectionTitle');
+  if(title) title.innerHTML=isCoord?'<span class="dot"></span>Cuadrante semanal':'<span class="dot"></span>Mi cuadrante mensual';
+
+  const calControls=$('calendarControls');
+  const calImport=$('calendarImportSection');
+  const calWeekly=$('calendarWeeklySection');
+  if(calControls) calControls.style.display=isCoord?'flex':'none';
+  if(calImport) calImport.style.display=isCoord?'':'none';
+  if(calWeekly) calWeekly.style.display=isCoord?'':'none';
+
   const name=currentUser?.name||'—';
   $('userName').textContent=name;
   $('userAvatar').textContent=name.charAt(0).toUpperCase();
+
+  const preferredPage=allowedPages.includes(activePage)?activePage:allowedPages[0];
+  if(activePage!==preferredPage){
+    goPage(preferredPage);
+  }
 }
 
 // ============================================================
@@ -2114,6 +2152,12 @@ function applyRoleUI(){
 let activePage='planner';
 
 function goPage(page){
+  const isCoord=currentUser?.role==='coord';
+  const allowedPages=isCoord
+    ? ['planner','tech','calendar','incidents','ots','guards','messages','admin']
+    : ['calendar','incidents','ots','messages'];
+  if(!allowedPages.includes(page)) page=allowedPages[0];
+
   activePage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const pg=$(  `page-${page}`);
@@ -2521,7 +2565,11 @@ function deleteOT(id){
 let calWeekOffset=0;
 
 function renderCalendar(){
-  const sector=$('calSector')?.value||'Electricidad';
+  const isCoord=currentUser?.role==='coord';
+  const sector=isCoord
+    ? ($('calSector')?.value||'Electricidad')
+    : (SECTORS.find(sec=>ST.rosters[sec]?.names?.includes(currentUser?.name))||'Electricidad');
+  if(!isCoord && $('calSector')) $('calSector').value=sector;
   const baseDate=getDate();
   const d=new Date(baseDate+'T00:00:00');
   d.setDate(d.getDate()+calWeekOffset*7);
@@ -2550,13 +2598,18 @@ function renderCalendar(){
     ${week.map((d,i)=>`<div class="calHeadCell ${d===today?'todayCol':''}">${dayNames[i]}<br><small>${d.slice(8)}</small></div>`).join('')}
   </div>`;
 
-  r.names.forEach((name,ni)=>{
+  const namesToRender=isCoord?r.names:r.names.filter(name=>name===currentUser?.name);
+  namesToRender.forEach(name=>{
     const row=week.map(d=>{
       const shift=getTechShift(sector,name,d)||'D';
       return `<div class="calCell ${shift} ${d===today?'todayCol':''}" title="${SHIFT_LABELS[shift]||shift}">${SHIFT_LABELS[shift]||shift}</div>`;
     }).join('');
     html+=`<div class="calRow"><div class="calTech">${name}</div>${row}</div>`;
   });
+
+  if(!namesToRender.length){
+    html+=`<div class="calRow"><div class="calTech">${currentUser?.name||'—'}</div>${week.map(()=>'<div class="calCell D">—</div>').join('')}</div>`;
+  }
 
   calTable.innerHTML=html;
   renderMonthGrid(sector);
@@ -2576,20 +2629,30 @@ function renderMonthGrid(sector){
   let html='';
   for(let i=1;i<firstDay;i++) html+='<div></div>';
 
+  const isCoord=currentUser?.role==='coord';
+  const techName=currentUser?.name;
+
   for(let d=1;d<=daysInMonth;d++){
     const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    // Count shifts for this day
-    const counts={M:0,T:0,N:0,D:0};
-    r.names.forEach(name=>{
-      const sh=getTechShift(sector,name,iso)||'D';
-      const k=sh.split('/')[0];
-      if(counts[k]!==undefined) counts[k]++;
-    });
-    const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
-    html+=`<div class="monthDay ${dominant}" title="${iso}">
-      <div class="dayNum">${d}</div>
-      <small style="font-size:9px">${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
-    </div>`;
+    if(isCoord){
+      const counts={M:0,T:0,N:0,D:0};
+      r.names.forEach(name=>{
+        const sh=getTechShift(sector,name,iso)||'D';
+        const k=sh.split('/')[0];
+        if(counts[k]!==undefined) counts[k]++;
+      });
+      const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+      html+=`<div class="monthDay ${dominant}" title="${iso}">
+        <div class="dayNum">${d}</div>
+        <small style="font-size:9px">${counts.M}${SHIFT_SHORT.M} ${counts.T}${SHIFT_SHORT.T} ${counts.N}${SHIFT_SHORT.N}</small>
+      </div>`;
+    } else {
+      const shift=(techName&&r.names.includes(techName)?(getTechShift(sector,techName,iso)||'D'):'D').split('/')[0];
+      html+=`<div class="monthDay ${shift}" title="${iso}">
+        <div class="dayNum">${d}</div>
+        <small style="font-size:10px;font-weight:800">${SHIFT_LABELS[shift]||'—'}</small>
+      </div>`;
+    }
   }
 
   grid.innerHTML=html;
@@ -2679,10 +2742,31 @@ function renderAdmin(){
 
   if(!allNames.size){ul.innerHTML='<div class="empty">Importa un Excel para ver usuarios</div>';return;}
 
-  ul.innerHTML=[...allNames].map(name=>{
+  const bySector=new Map();
+  SECTORS.forEach(sec=>{
+    (ST.rosters[sec]?.names||[]).forEach(name=>bySector.set(name,sec));
+  });
+
+  const category=$('userCategoryFilter')?.value||'all';
+  const nameQuery=($('userNameFilter')?.value||'').trim().toLowerCase();
+
+  const filtered=[...allNames].filter(name=>{
+    const matchesCategory=category==='all'||bySector.get(name)===category;
+    const matchesName=!nameQuery||name.toLowerCase().includes(nameQuery);
+    return matchesCategory&&matchesName;
+  });
+
+  if(!filtered.length){
+    ul.innerHTML='<div class="empty">No hay técnicos para ese filtro</div>';
+    return;
+  }
+
+  ul.innerHTML=filtered.map(name=>{
     const pass=ST.users.tecnicos?.[name]||'1234';
+    const sector=bySector.get(name)||'Sin categoría';
     return `<div class="techCard" style="padding:12px">
       <div class="techName" style="font-size:13px;margin-bottom:8px">${name}</div>
+      <div class="techSub" style="margin-bottom:8px">${sector}</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input class="input" type="password" value="${pass}" id="pass_${name.replace(/\s/g,'_')}" style="flex:1;padding:7px 10px;font-size:12px" placeholder="Contraseña" />
         <button class="btn sm primary" onclick="saveTechPass('${name}')">Guardar</button>
@@ -3072,6 +3156,9 @@ $('btnLogout').addEventListener('click',doLogout);
 $('userPill').addEventListener('click',()=>{
   if(currentUser?.role==='coord') goPage('admin');
 });
+
+$('userCategoryFilter')?.addEventListener('change',renderAdmin);
+$('userNameFilter')?.addEventListener('input',renderAdmin);
 
 // ============================================================
 // LOGIN
